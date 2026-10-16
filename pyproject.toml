@@ -1,0 +1,28 @@
+[project]
+name = "opendownloader"
+version = "1.2.0"
+description = "Open-source multi-connection download manager with browser integration and video capture"
+readme = "README.md"
+license = { text = "Unlicense" }
+requires-python = ">=3.10"
+dependencies = ["PySide6>=6.6", "requests>=2.31"]
+
+[project.optional-dependencies]
+video = ["yt-dlp"]
+socks = ["PySocks"]
+
+[project.gui-scripts]
+opendownloader = "opendownloader.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["opendownloader*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120

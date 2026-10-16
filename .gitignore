@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+build/
+dist/
+extension/dist/
+keys/
+*.spec.bak
+.pytest_cache/
+.ruff_cache/
+build_log.txt

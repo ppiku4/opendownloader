@@ -1,0 +1,7 @@
+PySide6>=6.6
+requests>=2.31
+# optional
+# libtorrent     # torrent downloads (magnet links / .torrent); wheels exist for Python 3.9-3.13
+# yt-dlp          # "Download video from web page" for sites without a direct stream
+# cryptography    # only a fallback; AES uses Python's bundled OpenSSL
+# PySocks         # SOCKS proxy support

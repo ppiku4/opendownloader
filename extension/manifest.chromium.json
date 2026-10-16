@@ -1,0 +1,64 @@
+{
+  "manifest_version": 3,
+  "name": "OpenDownloader Integration",
+  "short_name": "OpenDownloader",
+  "version": "1.0.2",
+  "description": "Send downloads to OpenDownloader and capture videos (HLS/DASH/MP4) from web pages.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "downloads",
+    "nativeMessaging",
+    "contextMenus",
+    "cookies",
+    "webRequest",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "OpenDownloader",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "pagehook.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArzWvMzo5ECRRjGZnRy6BkCyApE/VOXiHvQMGdeRYGuKTZg8F1SYY17hqZvBWCIeXNsPyh01+/GZZCD1qxrUdUBC/e6kRTNbqBR/XTjA+psLgA19j7auSVRlfztoDPTaHJXCeswXAlHb9C3WI2MlJfhBhMczRxylofPI5tvXieNXSDEDJ8q7IlWWGgdvFVLM8OKF4iDtXQoHcDZT1S+4iWjmO5TkK8qeUpRdwcfTLq+YX1oOYM6xhKtnsjp/dmbl0AhhCH7225uDv30exJEK3cJJufHW38Hh/HbN4rnpCdleseQNoIarBT18j3H8s3BNl7Rxkk+4+JaDKmCzFl/Nu0QIDAQAB",
+  "minimum_chrome_version": "111",
+  "background": {
+    "service_worker": "background.js"
+  }
+}

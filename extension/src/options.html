@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>OpenDownloader - Settings</title>
+<link rel="stylesheet" href="popup.css">
+<style>
+  body { width: auto; max-width: 720px; margin: 0 auto; padding: 16px 20px 40px; }
+  h1 { font-size: 18px; display: flex; align-items: center; gap: 10px; }
+  fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 14px 0; padding: 10px 14px; }
+  legend { color: var(--muted); padding: 0 6px; }
+  label.opt { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  textarea, input[type=number] { font: inherit; width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
+  input[type=number] { width: 110px; }
+  textarea { min-height: 70px; }
+  .bar { display: flex; gap: 10px; align-items: center; }
+</style>
+</head>
+<body>
+  <h1><img src="icons/icon48.png" width="32" height="32" alt=""> OpenDownloader settings</h1>
+  <div class="bar"><span id="status" class="dot"></span><span id="statusText" class="muted">Checking connection…</span><button id="test">Test connection</button></div>
+
+  <fieldset>
+    <legend>Download capture</legend>
+    <label class="opt"><input type="checkbox" id="enabled"> Send downloads of these file types to OpenDownloader</label>
+    <label class="opt"><input type="checkbox" id="syncWithApp"> Use the file-type list from the OpenDownloader app</label>
+    <textarea id="extensions"></textarea>
+    <label class="opt">Don't capture files smaller than <input type="number" id="minSizeKB" min="0"> KB</label>
+    <label class="opt"><input type="checkbox" id="captureIncognito"> Also capture in private / incognito windows</label>
+    <label class="opt"><input type="checkbox" id="captureMagnets"> Open magnet links (torrents) in OpenDownloader</label>
+    <div class="muted">Tip: hold <b>Alt</b> while clicking a link to let the browser download it instead.</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Never capture on these sites (one per line)</legend>
+    <textarea id="excludedSites"></textarea>
+  </fieldset>
+
+  <fieldset>
+    <legend>Video capture</legend>
+    <label class="opt"><input type="checkbox" id="showVideoPanel"> Show the "Download this video" button over videos</label>
+    <label class="opt">Ignore media files smaller than <input type="number" id="mediaMinKB" min="0"> KB</label>
+    <div class="muted">Hide the button on these sites (one per line):</div>
+    <textarea id="panelDisabledSites"></textarea>
+    <div class="muted">DRM-protected streams (Netflix, Prime Video, Disney+, Spotify…) can't be downloaded.</div>
+  </fieldset>
+
+  <div class="bar"><button id="save" class="primary">Save</button><span id="saved" class="muted"></span></div>
+  <script src="options.js"></script>
+</body>
+</html>

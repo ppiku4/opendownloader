@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon32.png" alt="">
+    <div class="title">OpenDownloader</div>
+    <span id="status" class="dot" title="Checking…"></span>
+  </header>
+
+  <div id="perm" class="notice hidden">
+    Firefox needs permission to see downloads and videos on websites.
+    <button id="grant">Grant access</button>
+  </div>
+  <div id="appdown" class="notice hidden"></div>
+
+  <section class="row">
+    <label class="switch"><input type="checkbox" id="enabled"><span></span></label>
+    <div>
+      <div>Capture downloads</div>
+      <div class="muted" id="enabledHint">Send matching downloads to OpenDownloader</div>
+    </div>
+  </section>
+  <section class="row">
+    <button id="site" class="link"></button>
+  </section>
+
+  <h2>Media on this page</h2>
+  <div id="media"><div class="muted pad">Nothing detected yet. Start playing a video.</div></div>
+
+  <details id="activityBox">
+    <summary>Recent downloads <span class="muted" id="activityCount"></span></summary>
+    <div id="activity"><div class="muted pad">No downloads yet.</div></div>
+    <button id="clearActivity" class="link small">Clear</button>
+  </details>
+
+  <footer>
+    <button id="openApp" class="link">Open OpenDownloader</button>
+    <button id="options" class="link">Settings</button>
+  </footer>
+  <script src="popup.js"></script>
+</body>
+</html>

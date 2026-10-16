@@ -1,0 +1,134 @@
+OpenDownloader - License, Terms of Use and Disclaimer
+=====================================================
+
+PLEASE READ CAREFULLY. By installing, copying or using OpenDownloader (the
+"Software") you agree to Parts 2, 3 and 4 below. If you do not agree, do not
+install or use the Software.
+
+
+PART 1 - PUBLIC DOMAIN DEDICATION (NO COPYRIGHT)
+------------------------------------------------
+
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute
+this software, either in source code form or as a compiled binary, for any
+purpose, commercial or non-commercial, and by any means.
+
+In jurisdictions that recognize copyright laws, the author or authors of this
+software dedicate any and all copyright interest in the software to the
+public domain. We make this dedication for the benefit of the public at large
+and to the detriment of our heirs and successors. We intend this dedication
+to be an overt act of relinquishment in perpetuity of all present and future
+rights to this software under copyright law.
+
+Where such a dedication is not legally possible, the authors grant every
+person a perpetual, worldwide, royalty-free, non-exclusive, irrevocable and
+unconditional license to use, copy, modify, publish, distribute, sublicense
+and sell the Software, for any purpose and without any conditions.
+
+This dedication covers only the original OpenDownloader code. Third-party
+components are covered by their own licenses (see Part 5).
+
+
+PART 2 - PERMITTED USE AND USER RESPONSIBILITY
+----------------------------------------------
+
+2.1  The Software is a general-purpose, content-neutral tool for
+     transferring files over standard network protocols (HTTP, HTTPS, FTP,
+     HLS, DASH, BitTorrent). It has substantial lawful uses, including
+     downloading freely licensed, public-domain, open-source, self-owned
+     and otherwise authorized material (for example Linux distributions
+     and other software that is officially published as torrents).
+
+2.2  The Software does not host, store, index, recommend, supply or link to
+     any content. Every download is chosen and started solely by the user.
+     The developers have no knowledge of, and no control over, which files
+     any user downloads.
+
+2.3  The Software is not designed, intended or promoted for copyright
+     infringement. By design it does not circumvent, remove or defeat
+     Digital Rights Management (DRM) or any other technological protection
+     measure, and it refuses to download content that is detected as
+     DRM-protected.
+
+2.4  You are solely and entirely responsible for:
+       (a) what you download, upload, store, copy, share or otherwise do
+           with the Software and with any content obtained through it,
+           including pieces of files that the BitTorrent protocol shares
+           with other users while a torrent is downloading or seeding;
+       (b) making sure you hold the rights, licenses or permissions needed
+           for that content; and
+       (c) complying with all laws that apply to you, including copyright
+           and related rights laws, and with the terms of service of every
+           website or service you access.
+
+2.5  You must not use the Software to infringe copyright or any other
+     right of any person, to access content you are not authorized to
+     access, or for any other unlawful purpose. Any such use is outside
+     the purpose of the Software, is not authorized by the developers, and
+     is undertaken at your own risk and liability.
+
+
+PART 3 - NO WARRANTY AND LIMITATION OF LIABILITY
+------------------------------------------------
+
+3.1  THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY
+     OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+     WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE
+     AND NON-INFRINGEMENT. THE ENTIRE RISK AS TO THE QUALITY, PERFORMANCE
+     AND USE OF THE SOFTWARE IS WITH YOU.
+
+3.2  TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL
+     THE AUTHORS, DEVELOPERS, CONTRIBUTORS OR DISTRIBUTORS OF THE SOFTWARE
+     (TOGETHER, THE "DEVELOPERS") BE LIABLE FOR ANY CLAIM, DAMAGES, LOSS,
+     FINE, PENALTY OR OTHER LIABILITY, WHETHER DIRECT, INDIRECT, INCIDENTAL,
+     SPECIAL, CONSEQUENTIAL OR EXEMPLARY, AND WHETHER IN AN ACTION OF
+     CONTRACT, TORT (INCLUDING NEGLIGENCE), STATUTE OR OTHERWISE, ARISING
+     FROM, OUT OF OR IN CONNECTION WITH:
+       (a) THE SOFTWARE OR ITS USE OR INABILITY TO BE USED;
+       (b) ANY CONTENT DOWNLOADED, ACCESSED, STORED OR SHARED USING THE
+           SOFTWARE, INCLUDING ANY INFRINGEMENT OF COPYRIGHT OR OTHER RIGHTS
+           BY A USER; OR
+       (c) ANY BREACH BY A USER OF ANY LAW OR OF ANY WEBSITE'S TERMS.
+
+3.3  The Developers do not authorize, endorse, encourage or induce any
+     infringing or unlawful use of the Software, and do not accept
+     responsibility for the acts of any user.
+
+
+PART 4 - INDEMNITY
+------------------
+
+You agree to defend, indemnify and hold harmless the Developers from and
+against any claim, demand, action, damages, loss, cost or expense (including
+reasonable legal fees) brought by any third party or authority that arises
+from or relates to your use of the Software, the content you download with
+it, or your breach of these terms or of any law.
+
+
+PART 5 - THIRD-PARTY COMPONENTS
+-------------------------------
+
+The Software includes or can download third-party components that are NOT
+in the public domain and remain under their own licenses, including:
+
+  - Qt for Python (PySide6 / Shiboken6) and Qt 6 - GNU LGPL v3
+  - Python runtime - Python Software Foundation License
+  - libtorrent (torrent support) - BSD 3-Clause License
+  - yt-dlp (downloaded on request) - The Unlicense
+  - FFmpeg (downloaded on request) - GNU LGPL / GPL, depending on the build
+
+Your use of each component is governed by that component's license.
+
+
+PART 6 - GENERAL
+----------------
+
+6.1  Nothing in these terms limits any liability that cannot be limited or
+     excluded under the law that applies to you. If any provision is found
+     to be unenforceable, it shall be enforced to the maximum extent
+     permissible and the remaining provisions shall remain in full effect.
+
+6.2  These terms apply to every copy and every version of the Software,
+     however obtained.
