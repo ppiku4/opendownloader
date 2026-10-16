@@ -89,7 +89,13 @@ def main(argv: list[str] | None = None) -> int:
                    help="open .torrent files and magnet links with OpenDownloader")
     p.add_argument("--quit", action="store_true", help="close the running OpenDownloader")
     p.add_argument("--version", action="version", version=__version__)
+    p.add_argument("--smoke-test", metavar="REPORT", help=argparse.SUPPRESS)
     a, _unknown = p.parse_known_args(argv)
+
+    if a.smoke_test:
+        from .diagnostics import smoke_test
+
+        return smoke_test(a.smoke_test)
 
     if a.associate_torrents:
         from . import integration

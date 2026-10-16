@@ -3,6 +3,7 @@
 # arguments the browser passes; it talks over the stdio pipes the browser provides).
 # Usage:  pyinstaller packaging/opendownloader.spec --noconfirm
 import os
+import sys
 
 ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))
 ICON = os.path.join(ROOT, "packaging", "opendownloader.ico")
@@ -53,6 +54,16 @@ _DROP_LIBS = re.compile(r"(^|[\\/])(lib)?(Qt6(Pdf|Quick\w*|Qml\w*|VirtualKeyboar
 
 def _keep(entry):
     dest = entry[0].replace("\\", "/")
+    name = dest.rsplit("/", 1)[-1].lower()
+    # Qt uses Windows' unversioned ICU API. PATH can contain an unrelated ICU
+    # (for example Poppler's build with suffixed exports), which PyInstaller
+    # otherwise bundles ahead of System32 and causes WinError 127 at startup.
+    # Windows 10+ also supplies its own API-set forwarders.
+    if sys.platform == "win32" and (
+        name in {"icuuc.dll", "icuin.dll", "icudt.dll"}
+        or name.startswith(("api-ms-win-", "ext-ms-win-"))
+    ):
+        return False
     if "/plugins/" in dest:
         parts = dest.split("/plugins/", 1)[1].split("/")
         if len(parts) >= 2:

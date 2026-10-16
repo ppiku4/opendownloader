@@ -29,9 +29,8 @@ def publish():
     notes = notes.replace('Already installed? Use *Help → Check for updates…* in OpenDownloader.',
                           'The in-app updater currently checks GitHub. Install this GitLab release from the downloads above.')
     notes = ('## Changes\n\n'
-             '- Add a tag-triggered GitLab Windows build and release pipeline.\n'
-             '- Test before building and publish CI-built packages with SHA-256 checksums.\n\n' + notes)
-    notes = notes.replace('## Changes\n\n', '## Changes\n\n- Report active connections immediately after splitting downloads.\n')
+             '- Fix QtCore startup failure caused by bundling an incompatible ICU DLL.\n'
+             '- Test the packaged Qt application before publishing release files.\n\n' + notes)
     body = {'name': f'OpenDownloader {tag.removeprefix("v")}', 'tag_name': tag,
             'description': notes, 'assets': {'links': links}}
     request = Request(f'{base}/releases', data=json.dumps(body).encode(), method='POST',

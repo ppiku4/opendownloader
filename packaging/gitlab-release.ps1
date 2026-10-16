@@ -19,6 +19,7 @@ Run-Python -m pytest -q --ignore=tests/e2e
 Run-Python extension/build.py
 Run-Python -m PyInstaller packaging/opendownloader.spec --noconfirm --clean
 if (-not (Test-Path dist/OpenDownloader/OpenDownloader.exe)) { throw 'Missing built executable' }
+& "$PSScriptRoot/smoke_test.ps1"
 Copy-Item -Recurse extension/dist/chromium dist/OpenDownloader/extension/chromium
 Copy-Item -Recurse extension/dist/firefox dist/OpenDownloader/extension/firefox
 Copy-Item packaging/README.txt dist/OpenDownloader/README.txt

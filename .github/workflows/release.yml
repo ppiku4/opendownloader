@@ -61,6 +61,10 @@ jobs:
           Copy-Item -Recurse extension/dist/firefox dist/OpenDownloader/extension/firefox
           Copy-Item packaging/README.txt dist/OpenDownloader/README.txt
 
+      - name: Test packaged startup
+        shell: pwsh
+        run: ./packaging/smoke_test.ps1
+
       - name: Build installer
         shell: pwsh
         run: |
