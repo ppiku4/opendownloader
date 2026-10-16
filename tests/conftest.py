@@ -94,6 +94,17 @@ def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def diff_report(got: bytes, want: bytes) -> str:
+    """Where two byte strings differ: size, first differing offset, and whether that region is zeros."""
+    if got == want:
+        return "identical"
+    first = next((i for i, (a, b) in enumerate(zip(got, want)) if a != b), min(len(got), len(want)))
+    bad = [i for i in range(0, min(len(got), len(want)), 1024) if got[i:i + 1024] != want[i:i + 1024]]
+    zero = all(not any(got[i:i + 1024]) for i in bad)
+    return (f"size {len(got)} vs {len(want)}, first difference at byte {first}, "
+            f"{len(bad)} differing 1 KiB blocks{' (all zeros: data never written)' if bad and zero else ''}")
+
+
 def wait_for(pred, timeout=30):
     end = time.time() + timeout
     while time.time() < end:

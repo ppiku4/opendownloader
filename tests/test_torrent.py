@@ -8,7 +8,7 @@ import pytest
 
 lt = pytest.importorskip("libtorrent")
 
-from conftest import sha, wait_for  # noqa: E402
+from conftest import diff_report, sha, wait_for  # noqa: E402
 
 from opendownloader.core import torrent_engine  # noqa: E402
 from opendownloader.core.models import Kind, Status  # noqa: E402
@@ -105,8 +105,10 @@ def test_download_selected_files(seeder, tmanager, tmp_path):
     finally:
         stop.set()
     assert item.path == out / "Pack"
-    assert sha((out / "Pack/a.bin").read_bytes()) == sha(files["Pack/a.bin"])
-    assert sha((out / "Pack/sub/b.bin").read_bytes()) == sha(files["Pack/sub/b.bin"])
+    got = (out / "Pack/a.bin").read_bytes()
+    assert sha(got) == sha(files["Pack/a.bin"]), diff_report(got, files["Pack/a.bin"])
+    got = (out / "Pack/sub/b.bin").read_bytes()
+    assert sha(got) == sha(files["Pack/sub/b.bin"]), diff_report(got, files["Pack/sub/b.bin"])
     c = out / "Pack/c.txt"
     assert not c.exists() or c.read_bytes() != files["Pack/c.txt"]   # not selected
     assert item.size == len(files["Pack/a.bin"]) + len(files["Pack/sub/b.bin"])

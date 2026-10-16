@@ -616,7 +616,8 @@ class TorrentDownloader(BaseDownloader):
         item.speed = 0.0
         item.active_connections = 0
         item.stage = ""
-        s.save_resume(h, resume_path(item.id), timeout=60, flush=finished)
+        if not s.save_resume(h, resume_path(item.id), timeout=60, flush=finished) and finished:
+            log.warning("torrent %s: disk cache flush wasn't confirmed before completing", item.id)
         self.handle = None
         if finished:
             item.downloaded = max(item.downloaded, item.size)
