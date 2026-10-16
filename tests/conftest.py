@@ -1,3 +1,4 @@
+import hashlib
 import os
 import sys
 import tempfile
@@ -56,7 +57,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(data[i:i + step])
                 if delay:
                     time.sleep(delay)
-        except (BrokenPipeError, ConnectionResetError):
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             pass
 
 
@@ -86,6 +87,11 @@ def manager(tmp_path):
     m = DownloadManager(st, Store(tmp_path / "db.sqlite"))
     yield m
     m.shutdown()
+
+
+def sha(data: bytes) -> str:
+    """Compare file contents by hash: a failing bytes == bytes assert prints megabytes of diff."""
+    return hashlib.sha256(data).hexdigest()
 
 
 def wait_for(pred, timeout=30):

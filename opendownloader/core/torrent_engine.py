@@ -285,8 +285,12 @@ class TorrentSession:
         while wait and time.monotonic() < end and self.find(key) is not None:
             time.sleep(0.05)
 
-    def save_resume(self, handle: Any, dest: Path, timeout: float = 10) -> bool:
-        """Ask libtorrent for resume data and write it to `dest` (waits for the alert)."""
+    def save_resume(self, handle: Any, dest: Path, timeout: float = 10, flush: bool = False) -> bool:
+        """Ask libtorrent for resume data and write it to `dest` (waits for the alert).
+
+        flush=True first writes libtorrent's disk cache to the files: libtorrent 2.1 reports pieces as
+        finished once they're verified, which can be before they reach the disk.
+        """
         if not handle.is_valid():
             return False
         key = ("resume", _hash_str(handle.info_hashes()))
@@ -294,8 +298,11 @@ class TorrentSession:
         with self.lock:
             self._waiters[key] = ev
             self._results.pop(key, None)
+        flags = lt.torrent_handle.save_info_dict
+        if flush:
+            flags |= lt.torrent_handle.flush_disk_cache
         try:
-            handle.save_resume_data(lt.torrent_handle.save_info_dict)
+            handle.save_resume_data(flags)
         except Exception:  # noqa: BLE001
             with self.lock:
                 self._waiters.pop(key, None)
@@ -609,7 +616,7 @@ class TorrentDownloader(BaseDownloader):
         item.speed = 0.0
         item.active_connections = 0
         item.stage = ""
-        s.save_resume(h, resume_path(item.id))
+        s.save_resume(h, resume_path(item.id), timeout=60, flush=finished)
         self.handle = None
         if finished:
             item.downloaded = max(item.downloaded, item.size)

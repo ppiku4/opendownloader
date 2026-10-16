@@ -8,7 +8,7 @@ import pytest
 
 lt = pytest.importorskip("libtorrent")
 
-from conftest import wait_for  # noqa: E402
+from conftest import sha, wait_for  # noqa: E402
 
 from opendownloader.core import torrent_engine  # noqa: E402
 from opendownloader.core.models import Kind, Status  # noqa: E402
@@ -105,8 +105,8 @@ def test_download_selected_files(seeder, tmanager, tmp_path):
     finally:
         stop.set()
     assert item.path == out / "Pack"
-    assert (out / "Pack/a.bin").read_bytes() == files["Pack/a.bin"]
-    assert (out / "Pack/sub/b.bin").read_bytes() == files["Pack/sub/b.bin"]
+    assert sha((out / "Pack/a.bin").read_bytes()) == sha(files["Pack/a.bin"])
+    assert sha((out / "Pack/sub/b.bin").read_bytes()) == sha(files["Pack/sub/b.bin"])
     c = out / "Pack/c.txt"
     assert not c.exists() or c.read_bytes() != files["Pack/c.txt"]   # not selected
     assert item.size == len(files["Pack/a.bin"]) + len(files["Pack/sub/b.bin"])
@@ -142,7 +142,7 @@ def test_magnet_metadata_pause_resume_and_seeding(seeder, tmanager, tmp_path):
         assert wait_for(lambda: item.status == Status.COMPLETE, 60), (item.status, item.error, item.stage)
         assert item.downloaded >= done_before
         for rel, blob in files.items():
-            assert (out / rel).read_bytes() == blob
+            assert sha((out / rel).read_bytes()) == sha(blob)
         assert torrent_engine.is_seeding(item.id) and item.stage.startswith("Seeding")
         torrent_engine.stop_seeding(item.id)
         assert not torrent_engine.is_seeding(item.id) and item.stage == ""

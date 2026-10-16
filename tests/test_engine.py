@@ -2,7 +2,7 @@ import hashlib
 import os
 import time
 
-from conftest import wait_for
+from conftest import sha, wait_for
 from opendownloader.core.models import Status
 
 
@@ -21,7 +21,7 @@ def test_multi_connection_download_with_dynamic_split(server, manager):
                   or item.status == Status.ERROR, 60)
     assert ok and item.status == Status.COMPLETE, item.error
     assert max(seen_conns) > 1, "should have split into several connections"
-    assert item.path.read_bytes() == body
+    assert sha(item.path.read_bytes()) == sha(body)
     assert item.filename == "big.bin"
     assert item.resumable
 
@@ -67,7 +67,7 @@ def test_resume_after_restart_of_app(server, tmp_path):
     assert it2.status == Status.PAUSED and it2.segments
     m2.start(it2.id)
     assert wait_for(lambda: it2.status == Status.COMPLETE, 30), it2.error
-    assert it2.path.read_bytes() == body
+    assert sha(it2.path.read_bytes()) == sha(body)
     m2.shutdown()
 
 
@@ -80,7 +80,7 @@ def test_no_range_server_and_disposition(server, manager):
     assert item.status == Status.COMPLETE, item.error
     assert item.filename == "résumé.pdf"
     assert not item.resumable
-    assert item.path.read_bytes() == body
+    assert sha(item.path.read_bytes()) == sha(body)
 
 
 def test_unknown_length(server, manager):
@@ -90,7 +90,7 @@ def test_unknown_length(server, manager):
     item = manager.add(base + "/stream", filename="s.bin")
     assert wait_for(lambda: item.status in (Status.COMPLETE, Status.ERROR), 20)
     assert item.status == Status.COMPLETE, item.error
-    assert item.path.read_bytes() == body
+    assert sha(item.path.read_bytes()) == sha(body)
 
 
 def test_404_is_error(server, manager):
@@ -150,7 +150,7 @@ def test_refresh_address(server, manager):
     got = manager.try_refresh(base + "/new-link.bin", len(body), "new-link.bin")
     assert got is item
     assert wait_for(lambda: item.status == Status.COMPLETE, 30), item.error
-    assert item.path.read_bytes() == body
+    assert sha(item.path.read_bytes()) == sha(body)
 
 
 def test_scheduler_starts_queue(server, manager):

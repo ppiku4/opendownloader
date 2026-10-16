@@ -47,7 +47,7 @@ jobs:
           python -c "import libtorrent"
 
       - name: Test
-        run: python -m pytest -q --ignore=tests/e2e
+        run: python -m pytest -q --ignore=tests/e2e -o log_level=INFO --durations=10
 
       - name: Build browser extension
         run: python extension/build.py
