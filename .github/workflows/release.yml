@@ -1,0 +1,103 @@
+# Builds OpenDownloader on GitHub's Windows runners and publishes the release.
+#   - Push a tag like v1.2.0  -> test, build, and create the GitHub release with all files.
+#   - "Run workflow" by hand  -> test and build only; the files are kept as a workflow artifact.
+# Executables are never committed to the repository; they only exist as release/workflow files.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-2025
+    env:
+      PYTHONUTF8: "1"
+      QT_QPA_PLATFORM: offscreen
+      # Official Inno Setup release, verified by SHA-256 (same as packaging\build_windows.bat)
+      INNO_URL: https://github.com/jrsoftware/issrc/releases/download/is-6_5_4/innosetup-6.5.4.exe
+      INNO_SHA: FA73BF47A4DA250D185D07561C2BFDA387E5E20DB77E4570004CF6A133CC10B1
+    steps:
+      - uses: actions/checkout@v4
+
+      # libtorrent has wheels up to Python 3.13 only
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = python -c "import opendownloader; print(opendownloader.__version__)"
+          "version=$v" >> $env:GITHUB_OUTPUT
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$v") {
+            throw "Tag $env:GITHUB_REF_NAME doesn't match opendownloader.__version__ ($v)"
+          }
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements.txt "pyinstaller>=6.5" "pytest>=8"
+          python -m pip install --disable-pip-version-check --only-binary=:all: "libtorrent>=2.0.9"
+          python -c "import libtorrent"
+
+      - name: Test
+        run: python -m pytest -q --ignore=tests/e2e
+
+      - name: Build browser extension
+        run: python extension/build.py
+
+      - name: Build OpenDownloader.exe
+        shell: pwsh
+        run: |
+          python -m PyInstaller packaging/opendownloader.spec --noconfirm --clean
+          if (-not (Test-Path dist/OpenDownloader/OpenDownloader.exe)) { throw "PyInstaller produced no exe" }
+          Copy-Item -Recurse extension/dist/chromium dist/OpenDownloader/extension/chromium
+          Copy-Item -Recurse extension/dist/firefox dist/OpenDownloader/extension/firefox
+          Copy-Item packaging/README.txt dist/OpenDownloader/README.txt
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $inno = "$env:RUNNER_TEMP\innosetup.exe"
+          Invoke-WebRequest -UseBasicParsing -Uri $env:INNO_URL -OutFile $inno
+          if ((Get-FileHash $inno -Algorithm SHA256).Hash -ne $env:INNO_SHA) { throw "Inno Setup checksum mismatch" }
+          Start-Process $inno -Wait -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CURRENTUSER", "/SP-"
+          & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /Q "/DAppVersion=${{ steps.ver.outputs.version }}" packaging\installer.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
+
+      - name: Collect release files
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          New-Item -ItemType Directory release | Out-Null
+          Copy-Item dist/OpenDownloader-Setup.exe release/
+          Compress-Archive -Path dist/OpenDownloader -DestinationPath "release/OpenDownloader-$v-portable.zip"
+          Copy-Item extension/dist/opendownloader-chromium.zip release/
+          Copy-Item extension/dist/opendownloader-firefox.zip release/opendownloader-firefox.xpi
+          Push-Location release
+          Get-ChildItem -File | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.Name -Algorithm SHA256).Hash.ToLower(), $_.Name
+          } | Set-Content -Encoding ascii SHA256SUMS.txt
+          Get-Content SHA256SUMS.txt
+          Pop-Location
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenDownloader-${{ steps.ver.outputs.version }}
+          path: release/
+
+      - name: Publish GitHub release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          (Get-Content packaging/release-notes.md -Raw).Replace("{VERSION}", $v) | Set-Content -Encoding utf8 notes.md
+          gh release create $env:GITHUB_REF_NAME release/* --title "OpenDownloader $v" --notes-file notes.md --generate-notes --verify-tag

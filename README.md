@@ -123,7 +123,19 @@ Chromium browsers and Firefox. No code from any proprietary download manager is 
 
 The app also runs on Linux and macOS from source.
 
-### Build the installer
+### Publish a release
+
+Releases are built by GitHub Actions ([`.github/workflows/release.yml`](.github/workflows/release.yml)), never
+from a local machine, and no executables are committed to the repository.
+
+1. Set the new version in `opendownloader/__init__.py` and `pyproject.toml`, and commit.
+2. Tag it and push the tag: `git tag -a v1.2.1 -m "OpenDownloader 1.2.1"` then `git push origin v1.2.1`.
+
+The workflow checks that the tag matches the version, runs the tests, builds the exe, installer, portable zip
+and extensions, and publishes the release with `SHA256SUMS.txt`. Installed copies then find it through
+*Help → Check for updates*. To build without releasing, run the workflow by hand from the Actions tab.
+
+### Build the installer locally
 
 Double-click **`packaging\build_windows.bat`**.
 

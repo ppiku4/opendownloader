@@ -8,3 +8,13 @@ keys/
 .pytest_cache/
 .ruff_cache/
 build_log.txt
+
+# never commit built binaries; releases are built by .github/workflows/release.yml
+*.exe
+*.dll
+*.pyd
+*.msi
+*.xpi
+*.zip
+release/
+notes.md
