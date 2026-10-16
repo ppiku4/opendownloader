@@ -1,5 +1,5 @@
 """OpenDownloader - an open-source, multi-connection download manager."""
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 APP_NAME = "OpenDownloader"
 NATIVE_HOST_NAME = "com.opendownloader.host"

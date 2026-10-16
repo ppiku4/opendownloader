@@ -29,7 +29,7 @@ $target = Join-Path $env:LOCALAPPDATA 'Programs\Python\Python313'
 Write-Host "      Installing into $target (this takes a minute)..."
 $args = "/quiet InstallAllUsers=0 TargetDir=`"$target`" Include_launcher=1 InstallLauncherAllUsers=0 " +
         "PrependPath=0 Include_test=0 Include_doc=0 Shortcuts=0 AssociateFiles=0"
-$p = Start-Process -FilePath $file -ArgumentList $args -Wait -PassThru
+$p = Start-Process -FilePath $file -ArgumentList $args -WindowStyle Hidden -Wait -PassThru
 Remove-Item $file -Force -ErrorAction SilentlyContinue
 if ($p.ExitCode -ne 0) { throw "Python installer exited with code $($p.ExitCode)" }
 if (-not (Test-Path (Join-Path $target 'python.exe'))) { throw "python.exe not found in $target after install" }

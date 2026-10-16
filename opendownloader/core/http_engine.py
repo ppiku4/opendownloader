@@ -168,6 +168,8 @@ class HttpDownloader(BaseDownloader):
                         self._start_worker(seg)
                 while len(self._alive()) < self.max_conn and self._split():
                     pass
+                # Report newly started connections before short segments finish.
+                item.active_connections = len(self._alive())
             elif not self._alive() and not all(s.done for s in item.segments):
                 seg = item.segments[0]
                 if id(seg) not in self.workers:
