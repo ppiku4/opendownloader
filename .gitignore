@@ -18,3 +18,6 @@ build_log.txt
 *.zip
 release/
 notes.md
+
+# Local GitLab runner binary, configuration, credentials, and build workspaces.
+.gitlab-runner/
