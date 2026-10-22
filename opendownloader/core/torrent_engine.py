@@ -438,6 +438,25 @@ def is_seeding(item_id: int) -> bool:
     return _session is not None and item_id in _session.seeding
 
 
+def reannounce_handle(h: Any) -> None:
+    """Contact all trackers now (ignoring their minimum interval) and announce on DHT/LSD."""
+    h.force_reannounce(0, -1, lt.reannounce_flags_t.ignore_min_interval)
+    for fn in ("force_dht_announce", "force_lsd_announce"):
+        try:
+            getattr(h, fn)()
+        except Exception:  # noqa: BLE001 - DHT/LSD switched off
+            pass
+
+
+def reannounce_seeding(item_id: int) -> bool:
+    s = _session
+    seed = s.seeding.get(item_id) if s is not None else None
+    if seed is None or not seed.handle.is_valid():
+        return False
+    reannounce_handle(seed.handle)
+    return True
+
+
 def stop_seeding(item_id: int) -> None:
     if _session is not None:
         _session.stop_seeding(item_id)
@@ -497,9 +516,39 @@ class TorrentDownloader(BaseDownloader):
     """Downloads one torrent. The item's url is the magnet link (or the .torrent's
     original address); the .torrent itself is kept in torrents/<id>.torrent."""
 
-    def __init__(self, item: DownloadItem, ctx: Any):
+    def __init__(self, item: DownloadItem, ctx: Any, recheck: bool = False):
         super().__init__(item, ctx)
         self.handle: Any = None
+        self.user_paused = False      # paused in libtorrent; the torrent stays loaded and resumes instantly
+        self.recheck_on_start = recheck
+
+    # ------------------------------------------------- user commands (UI thread)
+    def pause_torrent(self) -> None:
+        h = self.handle
+        if h is not None and h.is_valid():
+            h.pause()
+        self.user_paused = True
+
+    def resume_torrent(self) -> None:
+        self.user_paused = False
+        h = self.handle
+        if h is not None and h.is_valid():
+            h.resume()
+
+    def recheck(self) -> None:
+        """Verify the downloaded data against the torrent's hashes again."""
+        h = self.handle
+        if h is None or not h.is_valid():
+            self.recheck_on_start = True     # still starting: check as soon as the torrent is added
+            return
+        if self.user_paused:
+            self.resume_torrent()
+        h.force_recheck()
+
+    def reannounce(self) -> None:
+        h = self.handle
+        if h is not None and h.is_valid() and not self.user_paused:
+            reannounce_handle(h)
 
     def set_speed_limit(self, kbps: int) -> None:
         super().set_speed_limit(kbps)
@@ -592,6 +641,11 @@ class TorrentDownloader(BaseDownloader):
         self.handle = h
         if item.speed_limit_kbps > 0:
             h.set_download_limit(item.speed_limit_kbps * 1024)
+        if self.recheck_on_start:
+            self.recheck_on_start = False
+            h.force_recheck()
+        if self.user_paused:
+            h.pause()
         states = lt.torrent_status.states
         checking = {states.checking_files, states.checking_resume_data}
         got_meta = False
@@ -610,6 +664,13 @@ class TorrentDownloader(BaseDownloader):
                     item.downloaded = st.total_wanted_done
                 item.speed = float(st.download_payload_rate)
                 item.active_connections = st.num_peers
+                if self.user_paused and st.state not in checking:
+                    item.status = Status.PAUSED
+                    item.stage = "Paused (Resume continues instantly)"
+                    item.speed = 0.0
+                    self.maybe_persist()
+                    self.stop_event.wait(0.5)
+                    continue
                 if st.state in checking:
                     item.status = Status.CONNECTING
                     item.stage = f"Checking existing data… {st.progress * 100:.0f}%"

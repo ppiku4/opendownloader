@@ -596,6 +596,22 @@ class ProgressDialog(QDialog):
         self.details_btn.clicked.connect(self._toggle_details)
         close = QPushButton("Hide")
         close.clicked.connect(self.close)
+        # torrent-only controls (Pause/Resume is the main toggle button)
+        self.torrent_btns: dict[str, QPushButton] = {}
+        trow = QHBoxLayout()
+        for action, text, tip in (
+                ("stop", "Stop", "Stop completely: the torrent is unloaded and its progress saved"),
+                ("recheck", "Force recheck", "Verify the downloaded data against the torrent's hashes"),
+                ("reannounce", "Force reannounce", "Ask the trackers and DHT for peers now")):
+            b = QPushButton(text)
+            b.setToolTip(tip)
+            b.clicked.connect(lambda _=False, a=action: self.ctl.manager.torrent_action(self.item_id, a))
+            self.torrent_btns[action] = b
+            trow.addWidget(b)
+        trow.addStretch(1)
+        self.torrent_row = QWidget()
+        self.torrent_row.setLayout(trow)
+        trow.setContentsMargins(0, 0, 0, 0)
         lim = QHBoxLayout()
         lim.addWidget(self.limit_cb)
         lim.addWidget(self.limit_sp)
@@ -613,6 +629,7 @@ class ProgressDialog(QDialog):
         lay.addWidget(self.segbar)
         lay.addWidget(self.details, 1)
         lay.addLayout(lim)
+        lay.addWidget(self.torrent_row)
         lay.addLayout(btns)
         self.resize(560, 470)
         self.refresh()
@@ -631,7 +648,9 @@ class ProgressDialog(QDialog):
         it = self.ctl.manager.items.get(self.item_id)
         if it is None:
             return
-        if it.status.active:
+        if it.kind == "torrent" and self.ctl.manager.torrent_state(self.item_id) == "running":
+            self.ctl.manager.torrent_action(self.item_id, "pause")
+        elif it.status.active:
             self.ctl.manager.pause(self.item_id)
         elif it.status == Status.COMPLETE:
             open_path(it.path)
@@ -708,6 +727,13 @@ class ProgressDialog(QDialog):
         else:
             self.toggle_btn.setText("Resume")
             self.toggle_btn.setIcon(icons.icon("resume"))
+        state = self.ctl.manager.torrent_state(self.item_id)
+        self.torrent_row.setVisible(bool(state))
+        if state:
+            self.torrent_btns["stop"].setEnabled(state in ("running", "paused"))
+            self.torrent_btns["recheck"].setEnabled(
+                state in ("running", "paused") or (state == "stopped" and it.status != Status.COMPLETE))
+            self.torrent_btns["reannounce"].setEnabled(state in ("running", "seeding"))
 
 
 # ---------------------------------------------------------------------------

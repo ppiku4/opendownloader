@@ -166,3 +166,49 @@ def test_remove_unfinished_deletes_only_torrent_files(seeder, tmanager, tmp_path
     assert keep.exists()
     assert not (out / "Pack/a.bin").exists() and not (out / "Pack/sub").exists()
     assert not torrent_engine.torrent_path(item.id).exists()
+
+
+def test_pause_in_place_recheck_reannounce_and_stop(seeder, tmanager, tmp_path):
+    data, _src, files, port, _ih = seeder
+    out = tmp_path / "out4"
+    item = _add(tmanager, data, out)
+    item.speed_limit_kbps = 300                               # slow enough to act mid-way
+    stop = threading.Event()
+    threading.Thread(target=_connect_forever, args=(port, stop), daemon=True).start()
+    m = tmanager
+    try:
+        assert m.torrent_action(item.id, "pause") is False     # not running yet
+        m.start(item.id)
+        assert wait_for(lambda: item.downloaded > 100_000, 60), (item.status, item.error, item.stage)
+        assert m.torrent_state(item.id) == "running"
+        assert m.torrent_action(item.id, "reannounce")
+
+        # pause in place: the torrent stays loaded, nothing more is downloaded
+        assert m.torrent_action(item.id, "pause")
+        assert wait_for(lambda: item.status == Status.PAUSED, 10)
+        assert m.torrent_state(item.id) == "paused" and item.id in m.workers
+        time.sleep(1.5)
+        held = item.downloaded
+        time.sleep(1.5)
+        assert item.downloaded == held
+        assert m.torrent_action(item.id, "reannounce") is False   # paused: no announce
+
+        # Resume continues the same session; recheck verifies what's there and goes on
+        assert m.start(item.id)
+        assert m.torrent_state(item.id) == "running"
+        assert m.torrent_action(item.id, "recheck")
+        assert wait_for(lambda: item.status == Status.DOWNLOADING and item.downloaded >= held, 30)
+
+        # stop: unloaded, progress saved; recheck on a stopped torrent starts it with a check
+        assert m.torrent_action(item.id, "stop")
+        assert wait_for(lambda: m.torrent_state(item.id) == "stopped" and item.status == Status.PAUSED, 15)
+        assert torrent_engine.resume_path(item.id).exists()
+        m.set_item_speed_limit(item.id, 0)
+        assert m.torrent_action(item.id, "recheck")
+        assert wait_for(lambda: item.status == Status.COMPLETE, 60), (item.status, item.error, item.stage)
+    finally:
+        stop.set()
+    for rel in ("Pack/a.bin", "Pack/sub/b.bin", "Pack/c.txt"):
+        got = (out / rel).read_bytes()
+        assert sha(got) == sha(files[rel]), diff_report(got, files[rel])
+    assert m.torrent_action(item.id, "recheck") is False       # complete and not seeding

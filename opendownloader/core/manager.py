@@ -123,7 +123,7 @@ class DownloadManager:
             return FtpDownloader(item, self.ctx)
         return HttpDownloader(item, self.ctx)
 
-    def start(self, item_id: int) -> bool:
+    def start(self, item_id: int, recheck: bool = False) -> bool:
         with self.lock:
             item = self.items.get(item_id)
             if item is None or item.status == Status.COMPLETE:
@@ -131,6 +131,11 @@ class DownloadManager:
             old = self.workers.get(item_id)
             if old is not None:
                 if old.is_alive() and not old.stopping:
+                    if getattr(old, "user_paused", False):    # torrent paused in place
+                        old.resume_torrent()
+                        if recheck:
+                            old.recheck()
+                        return True
                     return False
                 old.join(5)
                 if old.is_alive():
@@ -139,6 +144,8 @@ class DownloadManager:
             if item.awaiting_refresh:
                 return False
             w = self._make_worker(item)
+            if recheck and isinstance(w, torrent_engine.TorrentDownloader):
+                w.recheck_on_start = True
             self.workers[item_id] = w
             item.status = Status.CONNECTING
             w.start()
@@ -165,6 +172,37 @@ class DownloadManager:
         for iid, it in list(self.items.items()):
             if it.status in (Status.PAUSED, Status.QUEUED, Status.ERROR):
                 self.start(iid)
+
+    # ------------------------------------------------------------- torrents
+    def torrent_state(self, item_id: int) -> str:
+        """'running', 'paused' (in place), 'seeding', 'stopped', or '' for non-torrents."""
+        item = self.items.get(item_id)
+        if item is None or item.kind != Kind.TORRENT.value:
+            return ""
+        w = self.workers.get(item_id)
+        if isinstance(w, torrent_engine.TorrentDownloader) and w.is_alive() and not w.stopping:
+            return "paused" if w.user_paused else "running"
+        return "seeding" if torrent_engine.is_seeding(item_id) else "stopped"
+
+    def torrent_action(self, item_id: int, action: str) -> bool:
+        """pause / stop / recheck / reannounce one torrent. Returns False when it doesn't apply."""
+        state = self.torrent_state(item_id)
+        w = self.workers.get(item_id)
+        if action == "pause" and state == "running":
+            w.pause_torrent()  # type: ignore[union-attr]
+        elif action == "stop" and state in ("running", "paused"):
+            self.pause(item_id)
+        elif action == "recheck" and state in ("running", "paused"):
+            w.recheck()  # type: ignore[union-attr]
+        elif action == "recheck" and state == "stopped" and self.items[item_id].status != Status.COMPLETE:
+            return self.start(item_id, recheck=True)
+        elif action == "reannounce" and state == "running":
+            w.reannounce()  # type: ignore[union-attr]
+        elif action == "reannounce" and state == "seeding":
+            return torrent_engine.reannounce_seeding(item_id)
+        else:
+            return False
+        return True
 
     def restart(self, item_id: int) -> None:
         """Discard partial data and download again from zero."""

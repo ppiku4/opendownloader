@@ -229,6 +229,14 @@ class MainWindow(QMainWindow):
         self.a_page = self._act("Download video from web page…", "video", c.page_video_dialog)
         self.a_torrent = self._act("Open torrent file…", None, c.add_torrent_file_dialog, "Ctrl+T")
         self.a_stopseed = self._act("Stop seeding", None, lambda: c.stop_seeding(self.selected_ids()))
+        self.a_tpause = self._act("Pause torrent", "pause", lambda: self._torrent("pause"),
+                                  tip="Pause in place: peers are disconnected, Resume continues instantly")
+        self.a_tstop = self._act("Stop torrent", "stopall", lambda: self._torrent("stop"),
+                                 tip="Stop completely: the torrent is unloaded and its progress saved")
+        self.a_trecheck = self._act("Force recheck", None, lambda: self._torrent("recheck"),
+                                    tip="Verify the downloaded data against the torrent's hashes")
+        self.a_treannounce = self._act("Force reannounce", None, lambda: self._torrent("reannounce"),
+                                       tip="Ask the trackers and DHT for peers now")
         self.a_refresh = self._act("Refresh download address…", None, self._refresh_addr)
         self.a_restart = self._act("Restart download", None, lambda: self._each(c.manager.restart))
         self.a_props = self._act("Properties", None, self._properties, "Alt+Return")
@@ -255,6 +263,7 @@ class MainWindow(QMainWindow):
         for a in (self.a_resume, self.a_stop, self.a_stopall, None, self.a_delete, self.a_delcomplete, None,
                   self.a_restart, self.a_refresh, self.a_props):
             m.addSeparator() if a is None else m.addAction(a)
+        self.torrent_menu = self._torrent_menu(m)
         m = mb.addMenu("&Queues")
         for a in (self.a_startq, self.a_stopq, None, self.a_sched):
             m.addSeparator() if a is None else m.addAction(a)
@@ -354,6 +363,25 @@ class MainWindow(QMainWindow):
         self.a_refresh.setEnabled(one and items[0].status != Status.COMPLETE and items[0].kind == "http")
         self.a_open.setEnabled(one and items[0].status == Status.COMPLETE)
         self.a_stopseed.setVisible(any(i.status == Status.COMPLETE and i.stage.startswith("Seeding") for i in items))
+        m = self.ctl.manager
+        states = [(i, m.torrent_state(i.id)) for i in items if i.kind == "torrent"]
+        self.torrent_menu.menuAction().setVisible(bool(states))
+        self.a_tpause.setEnabled(any(s == "running" for _, s in states))
+        self.a_tstop.setEnabled(any(s in ("running", "paused") for _, s in states))
+        self.a_trecheck.setEnabled(any(s in ("running", "paused") or (s == "stopped" and i.status != Status.COMPLETE)
+                                       for i, s in states))
+        self.a_treannounce.setEnabled(any(s in ("running", "seeding") for _, s in states))
+
+    def _torrent_menu(self, parent: QMenu) -> QMenu:
+        tm = parent.addMenu("Torrent")
+        for a in (self.a_tpause, self.a_tstop, None, self.a_trecheck, self.a_treannounce):
+            tm.addSeparator() if a is None else tm.addAction(a)
+        return tm
+
+    def _torrent(self, action: str) -> None:
+        for iid in self.selected_ids():
+            self.ctl.manager.torrent_action(iid, action)
+        self._update_actions()
 
     def refresh(self) -> None:
         sel = set(self.selected_ids())
@@ -397,6 +425,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_restart)
         m.addAction(self.a_refresh)
         m.addAction(self.a_stopseed)
+        self._torrent_menu(m).menuAction().setVisible(self.torrent_menu.menuAction().isVisible())
         m.addSeparator()
         qm = m.addMenu("Move to queue")
         for q in self.ctl.manager.queues.values():
