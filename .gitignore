@@ -21,3 +21,6 @@ notes.md
 
 # Local GitLab runner binary, configuration, credentials, and build workspaces.
 .gitlab-runner/
+
+# demo film project (Remotion), not part of the app
+demo-video/
