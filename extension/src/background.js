@@ -157,11 +157,31 @@ function logActivity(item, captured, reason) {
   try { api.storage.session?.set({ activity }); } catch { /* ignore */ }
 }
 
+// Chrome often reports no referrer for downloads started by redirects (Google Drive and file hosts),
+// and some hosts refuse requests without it. The active tab is then usually the page the user clicked
+// in - but only trust it when it is the same site as the download, so an unrelated page's address is
+// never sent to the download's server.
+function siteOf(url) {
+  const parts = hostOf(url).split(".");
+  // example.com / drive.google.com -> 2 labels; example.co.uk -> 3 labels
+  const n = parts.length > 2 && parts[parts.length - 1].length === 2 && parts[parts.length - 2].length <= 3 ? 3 : 2;
+  return parts.slice(-n).join(".");
+}
+
+async function sameSiteTabUrl(downloadUrl) {
+  try {
+    const [tab] = await api.tabs.query({ active: true, lastFocusedWindow: true });
+    const url = tab && /^https?:/i.test(tab.url || "") ? tab.url : "";
+    return url && siteOf(url) === siteOf(downloadUrl) ? url : "";
+  } catch { return ""; }
+}
+
 async function takeOver(item) {
   const url = item.finalUrl || item.url;
   try { await api.downloads.cancel(item.id); } catch { /* already gone */ }
   const req = await buildRequest({
-    url, referrer: item.referrer, filename: baseName(item.filename) || "", size: item.totalBytes || item.fileSize,
+    url, referrer: item.referrer || await sameSiteTabUrl(url), filename: baseName(item.filename) || "",
+    size: item.totalBytes || item.fileSize,
     mime: item.mime, storeId: item.cookieStoreId,
   });
   const resp = await sendNative({ type: "download", data: req });

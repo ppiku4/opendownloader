@@ -33,6 +33,13 @@ log = logging.getLogger(__name__)
 CHUNK = 64 * 1024
 _CR_RE = re.compile(r"bytes\s+(\d+)-(\d+)/(\d+|\*)", re.I)
 _FATAL_CODES = {400, 401, 403, 404, 405, 410, 451}
+# What some servers (Google Drive, file hosts) answer to *extra* parallel connections while the
+# first ones keep streaming: a limit on connections, not an expired link.
+_LIMIT_CODES = {403, 429, 503}
+
+
+class _ConnectionRefused(Exception):
+    """The server refused one more connection; the download continues with fewer."""
 
 
 def _parse_content_range(value: str | None) -> tuple[int, int, int] | None:
@@ -57,6 +64,8 @@ class HttpDownloader(BaseDownloader):
         self.max_conn = max(1, min(32, item.max_connections or int(st.get("max_connections", 8))))
         self.fatal: DownloadError | None = None
         self.workers: dict[int, threading.Thread] = {}   # id(segment) -> thread
+        self.streaming: set[int] = set()                  # id(segment) of workers receiving data
+        self.accepted = False                             # the server accepted a connection this run
 
         first_resp = None
         fresh = not item.segments or not item.part_path.exists() or not item.resumable
@@ -107,6 +116,11 @@ class HttpDownloader(BaseDownloader):
         if resp.status_code >= 400:
             code = resp.status_code
             resp.close()
+            if code in (401, 403, 410):
+                raise DownloadError(
+                    f"Server returned HTTP {code}: the site refused the download. Links from file-sharing sites "
+                    "often work only once or only in the browser - Alt+click the link to let the browser keep it, "
+                    "or use 'Refresh download address'.", fatal=True)
             raise DownloadError(f"Server returned HTTP {code}", fatal=code in _FATAL_CODES)
 
         cr = _parse_content_range(resp.headers.get("Content-Range"))
@@ -139,10 +153,11 @@ class HttpDownloader(BaseDownloader):
     # ------------------------------------------------------------------
     def _run_loop(self, first_resp: requests.Response | None) -> None:
         item = self.item
-        # start workers for unfinished segments (largest first)
+        # start one worker (largest unfinished segment first); the loop below adds the others once it
+        # is receiving data, so a server that limits connections refuses only the extra ones
         pending = sorted((s for s in item.segments if not s.done), key=lambda s: -(s.remaining or 0))
         for seg in pending:
-            if len(self._alive()) >= (self.max_conn if item.resumable else 1):
+            if self._alive():
                 break
             resp = first_resp if (first_resp is not None and seg.pos == 0) else None
             if resp is not None:
@@ -161,7 +176,7 @@ class HttpDownloader(BaseDownloader):
                 return
             if all(s.done for s in item.segments) and not self._alive():
                 break
-            if item.resumable and item.size > 0:
+            if item.resumable and item.size > 0 and (self.streaming or not self._alive()):
                 # restart orphaned segments (worker ended without finishing)
                 for seg in item.segments:
                     if not seg.done and id(seg) not in self.workers and len(self._alive()) < self.max_conn:
@@ -185,6 +200,9 @@ class HttpDownloader(BaseDownloader):
         for k in dead:
             del self.workers[k]
         return list(self.workers.values())
+
+    def _others_alive(self, seg: Segment) -> list[int]:
+        return [k for k, t in list(self.workers.items()) if k != id(seg) and t.is_alive()]
 
     def _start_worker(self, seg: Segment, resp: requests.Response | None = None) -> None:
         t = threading.Thread(target=self._worker, args=(seg, resp), daemon=True,
@@ -235,6 +253,9 @@ class HttpDownloader(BaseDownloader):
                         resp = self.session.get(item.url, headers=headers, stream=True,
                                                 timeout=(self.timeout, self.timeout))
                     self._check_response(resp, seg)
+                    with self.lock:
+                        self.streaming.add(id(seg))
+                        self.accepted = True
                     fh.seek(seg.pos)
                     eof = True
                     for chunk in resp.iter_content(CHUNK):
@@ -270,6 +291,14 @@ class HttpDownloader(BaseDownloader):
                                 seg.end = seg.pos - 1
                         elif not self.stopping:
                             raise requests.ConnectionError("connection closed early")
+                except _ConnectionRefused as e:
+                    if resp is not None:
+                        resp.close()
+                    with self.lock:
+                        self.max_conn = max(1, min(self.max_conn, len(self._others_alive(seg))))
+                    # the segment stays unfinished; it is restarted when a connection frees up
+                    log.info("server refused another connection (%s): continuing with %s", e, self.max_conn)
+                    return
                 except DownloadError as e:
                     if resp is not None:
                         resp.close()
@@ -286,6 +315,8 @@ class HttpDownloader(BaseDownloader):
                         return
                     self.stop_event.wait(min(self.retry_delay * retries, 30))
         finally:
+            with self.lock:
+                self.streaming.discard(id(seg))
             fh.close()
             if resp is not None:
                 resp.close()
@@ -297,6 +328,8 @@ class HttpDownloader(BaseDownloader):
             # Range beyond EOF: treat segment as complete if file size matches
             raise requests.ConnectionError("HTTP 416")
         if code >= 400:
+            if code in _LIMIT_CODES and item.resumable and self.accepted and self._others_alive(seg):
+                raise _ConnectionRefused(f"HTTP {code}")
             if code in _FATAL_CODES:
                 raise DownloadError(
                     f"HTTP {code}. The link may have expired - use 'Refresh download address'.",

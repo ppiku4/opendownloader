@@ -15,6 +15,9 @@ os.environ.setdefault("OPENDOWNLOADER_HOME", tempfile.mkdtemp(prefix="od-home-")
 
 class Handler(BaseHTTPRequestHandler):
     files: dict = {}
+    lock = threading.Lock()
+    active: dict = {}
+    refused: dict = {}
 
     def log_message(self, *a):  # silence
         pass
@@ -27,6 +30,28 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
         body, opts = entry
+        limit = opts.get("max_conns")
+        if limit:
+            # like Google Drive: refuse connections beyond the limit with 403
+            with Handler.lock:
+                busy = Handler.active.get(path, 0)
+                if busy >= limit:
+                    Handler.refused[path] = Handler.refused.get(path, 0) + 1
+                    self.send_response(403)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                Handler.active[path] = busy + 1
+            try:
+                return self._serve(path, body, opts)
+            finally:
+                with Handler.lock:
+                    Handler.active[path] -= 1
+        return self._serve(path, body, opts)
+
+    def _serve(self, path, body, opts):
+        if opts.get("header_delay"):
+            time.sleep(opts["header_delay"])     # a server that takes a moment to start streaming
         if callable(body):
             body = body()
         ctype = opts.get("type", "application/octet-stream")

@@ -180,3 +180,44 @@ def test_restart_and_remove(server, manager):
     path = item.path
     manager.remove([item.id], delete_files=True)
     assert item.id not in manager.items and not path.exists()
+
+
+def test_server_refusing_extra_connections_does_not_fail_the_download(server, manager):
+    """Google Drive and file hosts answer 403 to connections beyond their limit."""
+    from conftest import Handler
+    base, files = server
+    body = _data(4 * 1024 * 1024 + 7)
+    files["/limited.bin"] = (body, {"delay": 0.01, "max_conns": 2})
+    manager.settings["max_connections"] = 8
+    item = manager.add(base + "/limited.bin")
+    assert wait_for(lambda: item.status in (Status.COMPLETE, Status.ERROR), 60), item.status
+    assert item.status == Status.COMPLETE, item.error
+    assert Handler.refused.get("/limited.bin", 0) > 0          # the limit was actually hit
+    assert sha(item.path.read_bytes()) == sha(body)
+
+
+def test_403_on_the_first_request_still_fails(server, manager):
+    base, files = server
+    files["/gone.bin"] = (b"x" * 1000, {"max_conns": -1})          # every request refused
+    item = manager.add(base + "/gone.bin")
+    assert wait_for(lambda: item.status == Status.ERROR, 30), item.status
+    assert "403" in item.error
+
+
+def test_resume_on_a_connection_limited_server(server, manager):
+    """Resuming starts every unfinished segment; a limited server must not fail the download."""
+    base, files = server
+    body = _data(6 * 1024 * 1024 + 3)
+    files["/limited2.bin"] = (body, {"delay": 0.01, "max_conns": 2})
+    manager.settings["max_connections"] = 8
+    item = manager.add(base + "/limited2.bin")
+    assert wait_for(lambda: len(item.segments) > 3 and item.downloaded > 512 * 1024, 30), item.status
+    manager.pause(item.id)
+    assert wait_for(lambda: item.status == Status.PAUSED, 15)
+    # a server that takes a moment to start each response: the refusals for the extra connections
+    # then arrive before any accepted connection is streaming
+    files["/limited2.bin"] = (body, {"delay": 0.01, "max_conns": 2, "header_delay": 0.3})
+    manager.start(item.id)
+    assert wait_for(lambda: item.status in (Status.COMPLETE, Status.ERROR), 60), item.status
+    assert item.status == Status.COMPLETE, item.error
+    assert sha(item.path.read_bytes()) == sha(body)

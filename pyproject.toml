@@ -1,6 +1,6 @@
 [project]
 name = "opendownloader"
-version = "1.2.3"
+version = "1.2.4"
 description = "Open-source multi-connection download manager with browser integration and video capture"
 readme = "README.md"
 license = { text = "Unlicense" }
